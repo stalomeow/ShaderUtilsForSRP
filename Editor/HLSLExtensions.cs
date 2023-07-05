@@ -23,8 +23,8 @@ namespace Stalo.ShaderUtils.Editor
                 var defineName = GetDefineName(Path.GetFileNameWithoutExtension(pathName));
 
                 var sb = new StringBuilder();
-                sb.AppendFormat("#ifndef _{0}_INCLUDED{1}", defineName, LineEnding);
-                sb.AppendFormat("#define _{0}_INCLUDED{1}", defineName, LineEnding);
+                sb.AppendFormat("#ifndef {0}_INCLUDED{1}", defineName, LineEnding);
+                sb.AppendFormat("#define {0}_INCLUDED{1}", defineName, LineEnding);
                 sb.Append(LineEnding);
                 sb.AppendFormat("#endif{0}", LineEnding);
 
