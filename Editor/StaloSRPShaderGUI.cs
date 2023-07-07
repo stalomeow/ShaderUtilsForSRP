@@ -34,7 +34,7 @@ internal class StaloSRPShaderGUI : ShaderGUI
     public override void OnGUI(MaterialEditor editor, MaterialProperty[] properties)
     {
         Shader shader = ((Material)editor.target).shader;
-        InitializePropertyGroupsIfNot(ref m_PropGroups, shader, properties);
+        UpdatePropertyGroups(ref m_PropGroups, shader, properties);
 
         editor.SetDefaultGUIWidths();
 
@@ -104,6 +104,14 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
             m_Properties.Add(property);
             return true;
+        }
+
+        public void UpdateProperties(IReadOnlyDictionary<string, MaterialProperty> propMap)
+        {
+            for (int i = 0; i < m_Properties.Count; i++)
+            {
+                m_Properties[i] = propMap[m_Properties[i].name];
+            }
         }
 
         public bool OnGUI(
@@ -203,13 +211,16 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
     public static readonly string HeaderFoldoutAttrName = "HeaderFoldout";
 
-    private static void InitializePropertyGroupsIfNot(
+    private static void UpdatePropertyGroups(
         ref List<PropertyGroup> groups,
         Shader shader,
         MaterialProperty[] properties)
     {
         if (groups != null)
         {
+            Dictionary<string, MaterialProperty> propMap = new();
+            Array.ForEach(properties, prop => propMap.Add(prop.name, prop));
+            groups.ForEach(group => group.UpdateProperties(propMap));
             return;
         }
 
