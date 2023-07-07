@@ -16,6 +16,16 @@ using UnityEngine.Rendering;
 [PublicAPI]
 internal class StaloSRPShaderGUI : ShaderGUI
 {
+    private static readonly Lazy<GUIStyle> s_ShaderHeaderLabelStyle = new(() =>
+    {
+        return new GUIStyle(EditorStyles.largeLabel)
+        {
+            fontStyle = FontStyle.BoldAndItalic,
+            alignment = TextAnchor.MiddleCenter,
+            wordWrap = true,
+        };
+    });
+
     private Dictionary<uint, AnimBool> m_ExpandStates = new();
     private SearchField m_Search = new();
     private string m_SearchText = "";
@@ -26,6 +36,11 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
         using (new GUILayout.VerticalScope())
         {
+            // Shader Header
+            GUILayout.Space(5);
+            Shader shader = ((Material)editor.target).shader;
+            EditorGUILayout.LabelField(shader.name, s_ShaderHeaderLabelStyle.Value);
+
             // Search Field
             GUILayout.Space(5);
             m_SearchText = m_Search.OnGUI(m_SearchText);
