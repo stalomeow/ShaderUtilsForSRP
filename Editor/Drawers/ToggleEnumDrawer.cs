@@ -23,37 +23,39 @@ namespace Stalo.ShaderUtils.Editor.Drawers
 
         public override void OnGUI(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
         {
-            bool showMixedValue = EditorGUI.showMixedValue;
-            EditorGUI.showMixedValue = prop.hasMixedValue;
+            MaterialEditor.BeginProperty(position, prop);
 
-            if (prop.type is MaterialProperty.PropType.Float or MaterialProperty.PropType.Range)
+            using (EditorGUIScopes.MixedValue(prop.hasMixedValue))
             {
-                EditorGUI.BeginChangeCheck();
-                bool toggleValue = EditorGUI.Toggle(position, label, (int)prop.floatValue == m_OnValue);
-
-                if (EditorGUI.EndChangeCheck())
+                if (prop.type is MaterialProperty.PropType.Float or MaterialProperty.PropType.Range)
                 {
-                    prop.floatValue = toggleValue ? m_OnValue : m_OffValue;
-                    SetKeyword(prop, m_Keyword, toggleValue);
+                    EditorGUI.BeginChangeCheck();
+                    bool toggleValue = EditorGUI.Toggle(position, label, (int)prop.floatValue == m_OnValue);
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        prop.floatValue = toggleValue ? m_OnValue : m_OffValue;
+                        SetKeyword(prop, m_Keyword, toggleValue);
+                    }
+                }
+                else if (prop.type is MaterialProperty.PropType.Int)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool toggleValue = EditorGUI.Toggle(position, label, prop.intValue == m_OnValue);
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        prop.intValue = toggleValue ? m_OnValue : m_OffValue;
+                        SetKeyword(prop, m_Keyword, toggleValue);
+                    }
+                }
+                else
+                {
+                    Debug.LogErrorFormat("The type of {0} should be Float/Range/Int.", prop.name);
                 }
             }
-            else if (prop.type is MaterialProperty.PropType.Int)
-            {
-                EditorGUI.BeginChangeCheck();
-                bool toggleValue = EditorGUI.Toggle(position, label, prop.intValue == m_OnValue);
 
-                if (EditorGUI.EndChangeCheck())
-                {
-                    prop.intValue = toggleValue ? m_OnValue : m_OffValue;
-                    SetKeyword(prop, m_Keyword, toggleValue);
-                }
-            }
-            else
-            {
-                Debug.LogErrorFormat("The type of {0} should be Float/Range/Int.", prop.name);
-            }
-
-            EditorGUI.showMixedValue = showMixedValue;
+            MaterialEditor.EndProperty();
         }
 
         public override void Apply(MaterialProperty prop)
