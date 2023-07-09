@@ -1,7 +1,10 @@
-﻿using JetBrains.Annotations;
+﻿// #define SHADER_GUI_LOG
+
+using JetBrains.Annotations;
 using Stalo.ShaderUtils.Editor;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.AnimatedValues;
@@ -9,6 +12,7 @@ using UnityEditor.IMGUI.Controls;
 using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Debug = UnityEngine.Debug;
 
 // To make the full class name shorter, DO NOT add a namespace here.
 // Make it internal so it won't pollute the global namespace.
@@ -26,14 +30,22 @@ internal class StaloSRPShaderGUI : ShaderGUI
         };
     });
 
+    // Record the last ShaderGUI object for the material
+    private static readonly Dictionary<Material, StaloSRPShaderGUI> s_LastShaderGUI = new();
+
     private List<PropertyGroup> m_PropGroups = null;
     private Dictionary<uint, AnimBool> m_ExpandStates = new();
     private SearchField m_Search = new();
     private string m_SearchText = "";
+    private Shader m_LastShader;
 
     public override void OnGUI(MaterialEditor editor, MaterialProperty[] properties)
     {
-        Shader shader = ((Material)editor.target).shader;
+        Material[] materials = Array.ConvertAll(editor.targets, obj => (Material)obj);
+        Array.ForEach(materials, material => s_LastShaderGUI[material] = this); // Record ShaderGUI
+
+        Shader shader = materials[0].shader;
+        m_LastShader = shader; // Record Shader
         UpdatePropertyGroups(ref m_PropGroups, shader, properties);
 
         editor.SetDefaultGUIWidths();
@@ -73,6 +85,47 @@ internal class StaloSRPShaderGUI : ShaderGUI
         editor.DoubleSidedGIField();
     }
 
+    public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)
+    {
+        base.AssignNewShaderToMaterial(material, oldShader, newShader);
+
+        m_PropGroups = null;
+        m_ExpandStates.Clear();
+        m_SearchText = string.Empty;
+    }
+
+    public override void OnClosed(Material material)
+    {
+        if (s_LastShaderGUI.TryGetValue(material, out var shaderGUI) && shaderGUI == this)
+        {
+            s_LastShaderGUI.Remove(material);
+        }
+
+        base.OnClosed(material);
+    }
+
+    public override void ValidateMaterial(Material material)
+    {
+        base.ValidateMaterial(material);
+
+        // !!! When user undoes an action, Unity creates a new instance to call this method.
+        // !!! That instance is not the one actually drawing the inspector.
+        // !!! We should rebuild all groups to sync external changes.
+
+        if (s_LastShaderGUI.TryGetValue(material, out var shaderGUI) && shaderGUI != this)
+        {
+            shaderGUI.m_PropGroups = null;
+
+            if (shaderGUI.m_LastShader != material.shader)
+            {
+                // The user possibly undoes a shader-assignment.
+
+                shaderGUI.m_ExpandStates.Clear();
+                shaderGUI.m_SearchText = string.Empty;
+            }
+        }
+    }
+
     private class PropertyGroup
     {
         private readonly GUIContent m_Title;
@@ -104,14 +157,6 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
             m_Properties.Add(property);
             return true;
-        }
-
-        public void UpdateProperties(IReadOnlyDictionary<string, MaterialProperty> propMap)
-        {
-            for (int i = 0; i < m_Properties.Count; i++)
-            {
-                m_Properties[i] = propMap[m_Properties[i].name];
-            }
         }
 
         public bool OnGUI(
@@ -209,8 +254,6 @@ internal class StaloSRPShaderGUI : ShaderGUI
         }
     }
 
-    public static readonly string HeaderFoldoutAttrName = "HeaderFoldout";
-
     private static void UpdatePropertyGroups(
         ref List<PropertyGroup> groups,
         Shader shader,
@@ -218,9 +261,6 @@ internal class StaloSRPShaderGUI : ShaderGUI
     {
         if (groups != null)
         {
-            Dictionary<string, MaterialProperty> propMap = new();
-            Array.ForEach(properties, prop => propMap.Add(prop.name, prop));
-            groups.ForEach(group => group.UpdateProperties(propMap));
             return;
         }
 
@@ -240,7 +280,10 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
         // 必须在最后移除空的组，保证前面 bitExpanded 的正确性
         groups.RemoveAll(g => g.PropertyCount == 0);
+        LogToConsole("Rebuild Groups");
     }
+
+    public static readonly string HeaderFoldoutAttrName = "HeaderFoldout";
 
     private static bool TryGetHeaderFoldoutAttribute(
         Shader shader,
@@ -272,5 +315,11 @@ internal class StaloSRPShaderGUI : ShaderGUI
         title = null;
         helps = null;
         return false;
+    }
+
+    [Conditional("SHADER_GUI_LOG")]
+    private static void LogToConsole(params object[] messages)
+    {
+        Debug.LogWarning(string.Join('\n', messages));
     }
 }
