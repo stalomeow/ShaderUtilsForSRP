@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Stalo.ShaderUtils.Editor.Drawers
 {
@@ -9,7 +10,10 @@ namespace Stalo.ShaderUtils.Editor.Drawers
     {
         public override void OnGUI(Rect position, MaterialProperty prop, string label, MaterialEditor editor)
         {
-            editor.RenderQueueField(position);
+            using (new EditorGUI.DisabledScope(!SupportedRenderingFeatures.active.editableMaterialRenderQueue))
+            {
+                editor.RenderQueueField(position);
+            }
         }
     }
 }
