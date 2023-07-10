@@ -5,6 +5,7 @@ using Stalo.ShaderUtils.Editor;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.AnimatedValues;
@@ -159,6 +160,14 @@ internal class StaloSRPShaderGUI : ShaderGUI
             return true;
         }
 
+        public void ReloadProperties(IDictionary<string, MaterialProperty> propMap)
+        {
+            for (int i = 0; i < m_Properties.Count; i++)
+            {
+                m_Properties[i] = propMap[m_Properties[i].name];
+            }
+        }
+
         public bool OnGUI(
             MaterialEditor editor,
             IDictionary<uint, AnimBool> expandStates,
@@ -261,6 +270,10 @@ internal class StaloSRPShaderGUI : ShaderGUI
     {
         if (groups != null)
         {
+            Dictionary<string, MaterialProperty> propMap = properties.ToDictionary(
+                prop => prop.name,
+                prop => prop);
+            groups.ForEach(group => group.ReloadProperties(propMap));
             return;
         }
 
