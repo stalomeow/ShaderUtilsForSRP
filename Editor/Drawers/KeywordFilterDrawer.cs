@@ -9,8 +9,13 @@ namespace Stalo.ShaderUtils.Editor.Drawers
     {
         private readonly string m_Keyword;
         private readonly bool m_State;
+        private readonly int m_LabelIndent;
 
-        public KeywordFilterDrawer(string keyword, string state = "On")
+        public KeywordFilterDrawer(string keyword) : this(keyword, "On", 0) { }
+
+        public KeywordFilterDrawer(string keyword, string state) : this(keyword, state, 0) { }
+
+        public KeywordFilterDrawer(string keyword, string state, float labelIndent)
         {
             string stateLower = state.ToLower();
 
@@ -21,6 +26,7 @@ namespace Stalo.ShaderUtils.Editor.Drawers
 
             m_Keyword = keyword;
             m_State = (stateLower != "off");
+            m_LabelIndent = (int)labelIndent;
         }
 
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
@@ -37,7 +43,9 @@ namespace Stalo.ShaderUtils.Editor.Drawers
         {
             if (prop.hasMixedValue || MatchKeywordState(editor.target as Material))
             {
+                EditorGUI.indentLevel += m_LabelIndent;
                 editor.DefaultShaderProperty(position, prop, label);
+                EditorGUI.indentLevel -= m_LabelIndent;
                 return;
             }
 
