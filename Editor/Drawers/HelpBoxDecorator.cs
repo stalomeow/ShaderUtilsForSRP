@@ -19,15 +19,14 @@ namespace Stalo.ShaderUtils.Editor.Drawers
 
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
         {
-            float offset = EditorGUIUtility.standardVerticalSpacing * 2;
+            float offset = EditorGUIUtility.standardVerticalSpacing;
             GUIContent content = EditorGUIUtility.TrTextContentWithIcon(m_Message, m_MsgType);
             return offset + EditorStyles.helpBox.CalcHeight(content, EditorGUIUtility.currentViewWidth - 43);
         }
 
         public override void OnGUI(Rect position, MaterialProperty prop, string label, MaterialEditor editor)
         {
-            position.y += EditorGUIUtility.standardVerticalSpacing;
-            position.height -= EditorGUIUtility.standardVerticalSpacing * 2;
+            position.height -= EditorGUIUtility.standardVerticalSpacing;
             EditorGUI.HelpBox(position, m_Message, m_MsgType);
         }
     }
