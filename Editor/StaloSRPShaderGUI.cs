@@ -77,10 +77,10 @@ internal class StaloSRPShaderGUI : ShaderGUI
             GUILayout.Space(5);
         }
 
-        // if (SupportedRenderingFeatures.active.editableMaterialRenderQueue)
-        // {
-        //     editor.RenderQueueField();
-        // }
+        if (SupportedRenderingFeatures.active.editableMaterialRenderQueue)
+        {
+            editor.RenderQueueField();
+        }
 
         editor.EnableInstancingField();
         editor.DoubleSidedGIField();

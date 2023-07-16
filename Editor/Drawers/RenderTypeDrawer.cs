@@ -7,8 +7,8 @@ using UnityEngine.Rendering;
 
 namespace Stalo.ShaderUtils.Editor.Drawers
 {
-    [PublicAPI]
-    public class RenderTypeDrawer : MaterialPropertyDrawer
+    [PublicAPI, Obsolete]
+    internal class RenderTypeDrawer : MaterialPropertyDrawer
     {
         private enum RenderType
         {
