@@ -34,8 +34,8 @@ namespace Stalo.ShaderUtils.Editor.Drawers
         {
             MaterialEditor.BeginProperty(position, prop);
 
-            using (EditorGUIScopes.MixedValue(prop.hasMixedValue))
-            using (EditorGUIScopes.LabelWidth())
+            using (new MemberValueScope<bool>(() => EditorGUI.showMixedValue, prop.hasMixedValue))
+            using (new MemberValueScope<float>(() => EditorGUIUtility.labelWidth, 0))
             {
                 if (prop.type != MaterialProperty.PropType.Vector)
                 {

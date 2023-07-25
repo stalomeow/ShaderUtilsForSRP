@@ -25,7 +25,7 @@ namespace Stalo.ShaderUtils.Editor.Drawers
         {
             MaterialEditor.BeginProperty(position, prop);
 
-            using (EditorGUIScopes.MixedValue(prop.hasMixedValue))
+            using (new MemberValueScope<bool>(() => EditorGUI.showMixedValue, prop.hasMixedValue))
             {
                 if (prop.type is MaterialProperty.PropType.Float or MaterialProperty.PropType.Range)
                 {

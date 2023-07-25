@@ -66,8 +66,8 @@ namespace Stalo.ShaderUtils.Editor.Drawers
             EditorGUI.BeginChangeCheck();
             RenderType renderType = (RenderType)(int)prop.floatValue;
 
-            using (EditorGUIScopes.LabelWidth())
-            using (EditorGUIScopes.MixedValue(prop.hasMixedValue))
+            using (new MemberValueScope<bool>(() => EditorGUI.showMixedValue, prop.hasMixedValue))
+            using (new MemberValueScope<float>(() => EditorGUIUtility.labelWidth, 0))
             {
                 MaterialEditor.BeginProperty(position, prop);
                 renderType = (RenderType)EditorGUI.EnumPopup(position, label, renderType);
@@ -88,7 +88,7 @@ namespace Stalo.ShaderUtils.Editor.Drawers
             EditorGUI.BeginChangeCheck();
             int renderQueueOffset = (int)prop.floatValue;
 
-            using (EditorGUIScopes.MixedValue(prop.hasMixedValue))
+            using (new MemberValueScope<bool>(() => EditorGUI.showMixedValue, prop.hasMixedValue))
             {
                 MaterialEditor.BeginProperty(position, prop);
                 renderQueueOffset = EditorGUI.DelayedIntField(position, label, renderQueueOffset);

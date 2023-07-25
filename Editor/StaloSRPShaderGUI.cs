@@ -64,7 +64,7 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
             // Property Groups
             // 对齐 Slider 右侧输入框和其他输入框的宽度
-            using (EditorGUIScopes.LabelWidth(EditorGUIUtility.labelWidth - 5f))
+            using (new MemberValueScope<float>(() => EditorGUIUtility.labelWidth, width => width - 5f))
             {
                 foreach (PropertyGroup group in m_PropGroups)
                 {
