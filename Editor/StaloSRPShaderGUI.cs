@@ -133,6 +133,7 @@ internal class StaloSRPShaderGUI : ShaderGUI
         private readonly string m_Helps;
         private readonly uint m_BitExpanded;
         private readonly List<MaterialProperty> m_Properties;
+        private readonly List<List<MaterialPropertyWrapper>> m_PropertyWrappers;
 
         public PropertyGroup() : this(null, null, 0) { }
 
@@ -142,13 +143,14 @@ internal class StaloSRPShaderGUI : ShaderGUI
             m_Helps = helps;
             m_BitExpanded = bitExpanded;
             m_Properties = new List<MaterialProperty>();
+            m_PropertyWrappers = new List<List<MaterialPropertyWrapper>>();
         }
 
         public bool IsDefaultGroup => string.IsNullOrWhiteSpace(m_Title.text) || (m_BitExpanded == 0);
 
         public int PropertyCount => m_Properties.Count;
 
-        public bool TryAddProperty(MaterialProperty property)
+        public bool TryAddProperty(MaterialProperty property, List<MaterialPropertyWrapper> wrappers)
         {
             if ((property.flags & MaterialProperty.PropFlags.HideInInspector) != 0)
             {
@@ -157,6 +159,7 @@ internal class StaloSRPShaderGUI : ShaderGUI
             }
 
             m_Properties.Add(property);
+            m_PropertyWrappers.Add(wrappers);
             return true;
         }
 
@@ -230,10 +233,18 @@ internal class StaloSRPShaderGUI : ShaderGUI
             StringComparison searchComparisonType)
         {
             bool enableSearch = !string.IsNullOrWhiteSpace(searchText);
-            List<(MaterialProperty prop, float height)> validProps = new();
+            List<(MaterialProperty prop, float height, List<MaterialPropertyWrapper> wrappers)> validProps = new();
 
-            foreach (MaterialProperty prop in m_Properties)
+            for (int i = 0; i < m_Properties.Count; i++)
             {
+                MaterialProperty prop = m_Properties[i];
+                List<MaterialPropertyWrapper> wrappers = m_PropertyWrappers[i];
+
+                if (wrappers.Any(wrapper => !wrapper.CanDrawProperty(prop, prop.displayName, editor)))
+                {
+                    continue;
+                }
+
                 float height = editor.GetPropertyHeight(prop, prop.displayName);
 
                 if (height <= 0)
@@ -249,15 +260,28 @@ internal class StaloSRPShaderGUI : ShaderGUI
                     continue;
                 }
 
-                validProps.Add((prop, height));
+                validProps.Add((prop, height, wrappers));
             }
 
             return validProps.Count == 0 ? null : () =>
             {
-                foreach ((MaterialProperty prop, float height) in validProps)
+                foreach ((MaterialProperty prop, float height, List<MaterialPropertyWrapper> wrappers) in validProps)
                 {
+                    // Hook
+                    for (int i = 0; i < wrappers.Count; i++)
+                    {
+                        wrappers[i].OnWillDrawProperty(prop, prop.displayName, editor);
+                    }
+
+                    // Draw
                     Rect rect = EditorGUILayout.GetControlRect(true, height, EditorStyles.layerMaskField);
                     editor.ShaderProperty(rect, prop, prop.displayName);
+
+                    // Hook
+                    for (int i = wrappers.Count - 1; i >= 0; i--)
+                    {
+                        wrappers[i].OnDidDrawProperty(prop, prop.displayName, editor);
+                    }
                 }
             };
         }
@@ -281,14 +305,17 @@ internal class StaloSRPShaderGUI : ShaderGUI
 
         for (var i = 0; i < properties.Length; i++)
         {
-            if (TryGetHeaderFoldoutAttribute(shader, i, out string headerTitle, out string headerHelps))
+            ParseCustomAttributes(shader, i, out string headerTitle, out string headerHelps,
+                out List<MaterialPropertyWrapper> propWrappers);
+
+            if (!string.IsNullOrWhiteSpace(headerTitle))
             {
                 // 创建新的组
                 uint bitExpanded = 1u << (groups.Count - 1);
                 groups.Add(new PropertyGroup(headerTitle, headerHelps, bitExpanded));
             }
 
-            groups[^1].TryAddProperty(properties[i]);
+            groups[^1].TryAddProperty(properties[i], propWrappers);
         }
 
         // 必须在最后移除空的组，保证前面 bitExpanded 的正确性
@@ -297,37 +324,67 @@ internal class StaloSRPShaderGUI : ShaderGUI
     }
 
     public static readonly string HeaderFoldoutAttrName = "HeaderFoldout";
+    private static readonly Dictionary<string, Type> s_MatPropWrapperTypes = new();
 
-    private static bool TryGetHeaderFoldoutAttribute(
+    static StaloSRPShaderGUI()
+    {
+        Type[] wrapperCtorArgTypes = { typeof(string) };
+
+        foreach (Type type in TypeCache.GetTypesDerivedFrom<MaterialPropertyWrapper>())
+        {
+            if (type.IsGenericType || type.IsAbstract || type.GetConstructor(wrapperCtorArgTypes) == null)
+            {
+                continue;
+            }
+
+            s_MatPropWrapperTypes[type.Name] = type;
+
+            if (type.Name.Length > 7 && type.Name.EndsWith("Wrapper"))
+            {
+                s_MatPropWrapperTypes[type.Name[..^7]] = type;
+            }
+        }
+
+        LogToConsole("Found Wrappers:", string.Join('\n', s_MatPropWrapperTypes.Keys));
+    }
+
+    private static void ParseCustomAttributes(
         Shader shader,
         int propertyIndex,
-        out string title,
-        out string helps)
+        out string headerTitle,
+        out string headerHelps,
+        out List<MaterialPropertyWrapper> propWrappers)
     {
-        string[] attributes = shader.GetPropertyAttributes(propertyIndex);
+        headerTitle = null;
+        headerHelps = null;
+        propWrappers = new List<MaterialPropertyWrapper>();
 
-        foreach (string attr in attributes)
+        foreach (string attr in shader.GetPropertyAttributes(propertyIndex))
         {
-            Match match = Regex.Match(attr, @$"^{HeaderFoldoutAttrName}\((.+)\)$");
+            Match match = Regex.Match(attr, @"^(.+?)\((.+)\)$");
 
-            if (match.Success)
+            (string attrName, string rawArgs) = match.Success
+                ? (match.Groups[1].Value, match.Groups[2].Value)
+                : (attr, string.Empty);
+
+            if (attrName == HeaderFoldoutAttrName)
             {
-                string[] args = match.Groups[1].Value.Split(',');
+                string[] args = rawArgs.Split(',');
 
                 if (args.Length is not (1 or 2))
                 {
                     continue;
                 }
 
-                title = args[0].Trim();
-                helps = (args.Length is 2) ? args[1].Trim() : null;
-                return true;
+                headerTitle = args[0].Trim();
+                headerHelps = (args.Length is 2) ? args[1].Trim() : null;
+            }
+            else if (s_MatPropWrapperTypes.TryGetValue(attrName, out Type wrapperType))
+            {
+                object wrapper = Activator.CreateInstance(wrapperType, rawArgs);
+                propWrappers.Add(wrapper as MaterialPropertyWrapper);
             }
         }
-
-        title = null;
-        helps = null;
-        return false;
     }
 
     [Conditional("SHADER_GUI_LOG")]

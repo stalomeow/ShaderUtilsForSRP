@@ -1,10 +1,11 @@
+using System;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 
 namespace Stalo.ShaderUtils.Editor.Drawers
 {
-    [PublicAPI]
+    [PublicAPI, Obsolete]
     internal class KeywordFilterDrawer : MaterialPropertyDrawer
     {
         private readonly string m_Keyword;
