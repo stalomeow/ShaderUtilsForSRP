@@ -27,9 +27,9 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
         private static IConditionNode ParseCondition(string arg)
         {
             List<Token> tokens = Lexer.Shared.Tokenize(arg);
-            Debug.Log(string.Join(", ", tokens.Select(t => $"'{t.Raw}'")));
+            // Debug.Log(string.Join(", ", tokens.Select(t => $"'{t.Raw}'")));
             IConditionNode node = Parser.Shared.Parse(tokens);
-            Debug.Log(node);
+            // Debug.Log(node);
             return node;
         }
 
