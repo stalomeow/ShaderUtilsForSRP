@@ -7,15 +7,6 @@ namespace Stalo.ShaderUtils.Editor.Drawers
     [PublicAPI]
     internal class TextureScaleOffsetDrawer : MaterialPropertyDrawer
     {
-        private readonly int m_IndentCount;
-
-        public TextureScaleOffsetDrawer() : this(0) { }
-
-        public TextureScaleOffsetDrawer(float indentCount)
-        {
-            m_IndentCount = (int)indentCount;
-        }
-
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
         {
             return 2 * EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
@@ -25,7 +16,6 @@ namespace Stalo.ShaderUtils.Editor.Drawers
         {
             MaterialEditor.BeginProperty(position, prop);
 
-            using (new EditorGUI.IndentLevelScope(m_IndentCount))
             using (new MemberValueScope<bool>(() => EditorGUI.showMixedValue, prop.hasMixedValue))
             using (new MemberValueScope<float>(() => EditorGUIUtility.labelWidth, 0))
             {

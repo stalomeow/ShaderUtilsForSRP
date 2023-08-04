@@ -1,4 +1,4 @@
-# Shader Utils for SRP
+# Shader Utils for SRP v2
 
 Utilities for **SRP** shaders.
 
@@ -14,37 +14,83 @@ Use `StaloSRPShaderGUI` as CustomEditor.
 CustomEditor "StaloSRPShaderGUI"
 ```
 
-## Custom Attributes in Shader
+### Advanced Shader Property Attributes
+
+- `HeaderFoldout(label, [...tooltip])`
+
+    Begin an animated foldout header.
+
+- `Indent([count=1])`
+
+    Add indents before the property.
 
 - `HelpBox(None|Info|Warning|Error, ...messages)`
 
-    Display a HelpBox.
+    Display a HelpBox above the property.
 
-- `KeywordFilter(keyword, On|Off)`
+- `PostHelpBox(None|Info|Warning|Error, ...messages)`
 
-    Display the decorated property only when the keyword is on/off.
+    Display a HelpBox under the property.
 
 - `MinMaxRange(min-limit, max-limit)`
 
     Display a vector property with a MinMaxSlider.
 
-    - `property.x`: min value.
-    - `property.y`: max value.
+    - `property.x`: Min value.
+    - `property.y`: Max value.
 
 - `RampTexture`
 
-    Display a texture as a ramp texture.
+    Display a texture as a ramp texture (similar to a color gradient).
 
 - `SingleLineTextureNoScaleOffset([color-property])`
 
-    Display a texture property in single line. If `color-property` is specified, an additional color field will be displayed next to the texture.
+    Display a texture property in single line without `Tiling` and `Offset`. If `color-property` is specified, an additional color field will be displayed next to the texture.
 
-- `TextureScaleOffset([indent-count])`
+- `TextureScaleOffset`
 
-    Display a vector property as the scale and offset of texture with specific indent count (default is 0).
+    Display a vector property as the `Tiling` and `Offset` of a texture.
 
-- `ToggleEnum([keyword], on-value, off-value)`
+    - `property.xy`: Tiling (Scale).
+    - `property.zw`: Offset.
 
-    Display a toggle. If it is on/off, the `on-value`/`off-value` will be assigned. If `keyword` is provided, the keyword will be enabled/disabled when the toggle is on/off.
 
-    The type of the property must be `Float`/`Range`/`Int`.
+- `If(expr)`
+
+    Display the property if `expr` evaluates to `true`. You can write complex expression like `((not _KEYWORD_A and true) or (_KEYWORD_B and not not not false)) and not _KEYWORD_C`.
+
+    Operator precedence: `not` > `and` > `or`.
+
+### Material Property Wrapper
+
+This is similar to Unity's `MaterialPropertyDrawer`.
+
+You can write a custom class inherited from `MaterialPropertyWrapper` (in namespace `Stalo.ShaderUtils.Editor`) to control the GUI of a material property.
+
+Here's an example:
+
+``` c#
+internal class PostHelpBoxWrapper : MaterialPropertyWrapper
+{
+    private readonly MessageType m_MsgType;
+    private readonly string m_Message;
+
+    public PostHelpBoxWrapper(string rawArgs) : base(rawArgs)
+    {
+        string[] args = rawArgs.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            args[i] = args[i].Trim();
+        }
+
+        m_MsgType = Enum.Parse<MessageType>(args[0]);
+        m_Message = string.Join(", ", args[1..]);
+    }
+
+    public override void OnDidDrawProperty(MaterialProperty prop, string label, MaterialEditor editor)
+    {
+        EditorGUILayout.HelpBox(m_Message, m_MsgType);
+    }
+}
+```

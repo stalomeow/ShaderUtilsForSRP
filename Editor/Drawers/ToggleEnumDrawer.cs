@@ -1,10 +1,12 @@
+using System;
 using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Stalo.ShaderUtils.Editor.Drawers
 {
-    [PublicAPI]
+    [PublicAPI, Obsolete("Use Enum instead.")]
     internal class ToggleEnumDrawer : MaterialPropertyDrawer
     {
         private readonly string m_Keyword;

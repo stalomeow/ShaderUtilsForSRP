@@ -371,13 +371,18 @@ internal class StaloSRPShaderGUI : ShaderGUI
             {
                 string[] args = rawArgs.Split(',');
 
-                if (args.Length is not (1 or 2))
+                if (args.Length == 0)
                 {
                     continue;
                 }
 
-                headerTitle = args[0].Trim();
-                headerHelps = (args.Length is 2) ? args[1].Trim() : null;
+                for (int i = 0; i < args.Length; i++)
+                {
+                    args[i] = args[i].Trim();
+                }
+
+                headerTitle = args[0];
+                headerHelps = args.Length > 1 ? string.Join(", ", args, 1, args.Length - 1) : null;
             }
             else if (s_MatPropWrapperTypes.TryGetValue(attrName, out Type wrapperType))
             {
