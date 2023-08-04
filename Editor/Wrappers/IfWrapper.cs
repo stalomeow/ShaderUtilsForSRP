@@ -10,14 +10,13 @@ using UnityEngine.Assertions;
 namespace Stalo.ShaderUtils.Editor.Wrappers
 {
     [PublicAPI]
-    internal class ConditionalWrapper : MaterialPropertyWrapper
+    internal class IfWrapper : MaterialPropertyWrapper
     {
         private readonly IConditionNode m_Condition;
 
-        public ConditionalWrapper(string rawArgs) : base(rawArgs)
+        public IfWrapper(string rawArgs) : base(rawArgs)
         {
             m_Condition = ParseCondition(rawArgs);
-            // Debug.Log(m_Condition);
         }
 
         public override bool CanDrawProperty(MaterialProperty prop, string label, MaterialEditor editor)
@@ -27,15 +26,29 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
         private static IConditionNode ParseCondition(string arg)
         {
-            List<Token> tokens = new Lexer().ToToken(arg);
-            // Debug.Log(string.Join(", ", tokens.Select(t => $"'{t.Raw}'")));
-            IConditionNode node = new Parser().ToNode(tokens);
+            List<Token> tokens = Lexer.Shared.Tokenize(arg);
+            Debug.Log(string.Join(", ", tokens.Select(t => $"'{t.Raw}'")));
+            IConditionNode node = Parser.Shared.Parse(tokens);
+            Debug.Log(node);
             return node;
         }
 
         private interface IConditionNode
         {
             bool Evaluate(Material material);
+        }
+
+        private class TrueNode : IConditionNode
+        {
+            public bool Evaluate(Material material)
+            {
+                return true;
+            }
+
+            public override string ToString()
+            {
+                return "true";
+            }
         }
 
         private class FalseNode : IConditionNode
@@ -143,40 +156,61 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
             And = 1 << 2,
             Or = 1 << 3,
             LeftParentheses = 1 << 4,
-            RightParentheses = 1 << 5
+            RightParentheses = 1 << 5,
+            True = 1 << 6,
+            False = 1 << 7
         }
 
         private readonly struct Token
         {
             public readonly string Raw;
             public readonly TokenType Type;
+            public readonly string SrcText;
+            public readonly int Column;
 
-            public Token(string raw, TokenType type)
+            public Token(string raw, TokenType type, string srcText, int column)
             {
                 Raw = raw;
                 Type = type;
+                SrcText = srcText;
+                Column = column;
             }
         }
 
         private class InvalidCharacterException : Exception
         {
-            public InvalidCharacterException(char c) : base($"Invalid character: '{c}'.") { }
+            public InvalidCharacterException(string text, int pos)
+                : base($"Invalid character in '{text}' (column {pos + 1}).") { }
         }
 
         private class Lexer
         {
+            [ThreadStatic] private static Lexer s_Shared;
+
+            public static Lexer Shared => s_Shared ??= new Lexer();
+
+            private readonly StringBuilder m_Cache = new();
             private int m_CurrentPos;
-            private StringBuilder m_Cache = new();
+            private string m_SrcText;
             private string m_Text;
             private bool m_IsIdle;
 
-            private char CurrentChar => m_Text[m_CurrentPos];
+            private char GetCurrentChar()
+            {
+                return m_Text[m_CurrentPos];
+            }
 
-            public List<Token> ToToken(string text)
+            private Token CreateToken(string raw, TokenType tokenType, int posFirstChar)
+            {
+                return new Token(raw, tokenType, m_SrcText, posFirstChar + 1);
+            }
+
+            public List<Token> Tokenize(string text)
             {
                 // Initialize
-                m_CurrentPos = 0;
                 m_Cache.Clear();
+                m_CurrentPos = 0;
+                m_SrcText = text;
                 m_Text = text + ' '; // Add a white space to do cleanup
                 m_IsIdle = true;
 
@@ -201,7 +235,7 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
             private void ProcessIdle(List<Token> results)
             {
                 m_Cache.Clear();
-                char c = CurrentChar;
+                char c = GetCurrentChar();
 
                 if (char.IsWhiteSpace(c))
                 {
@@ -218,23 +252,23 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                 switch (c)
                 {
                     case '(':
-                        results.Add(new Token("(", TokenType.LeftParentheses));
+                        results.Add(CreateToken("(", TokenType.LeftParentheses, m_CurrentPos));
                         m_CurrentPos++;
                         break;
 
                     case ')':
-                        results.Add(new Token(")", TokenType.RightParentheses));
+                        results.Add(CreateToken(")", TokenType.RightParentheses, m_CurrentPos));
                         m_CurrentPos++;
                         break;
 
                     default:
-                        throw new InvalidCharacterException(c);
+                        throw new InvalidCharacterException(m_SrcText, m_CurrentPos);
                 }
             }
 
             private void ProcessWord(List<Token> results)
             {
-                char c = CurrentChar;
+                char c = GetCurrentChar();
 
                 if (char.IsLetterOrDigit(c) || c == '_')
                 {
@@ -244,25 +278,17 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                 }
 
                 string word = m_Cache.ToString();
-
-                switch (word)
+                TokenType tokenType = word switch
                 {
-                    case "not":
-                        results.Add(new Token(word, TokenType.Not));
-                        break;
-
-                    case "and":
-                        results.Add(new Token(word, TokenType.And));
-                        break;
-
-                    case "or":
-                        results.Add(new Token(word, TokenType.Or));
-                        break;
-
-                    default:
-                        results.Add(new Token(word, TokenType.Keyword));
-                        break;
-                }
+                    "not" => TokenType.Not,
+                    "and" => TokenType.And,
+                    "or" => TokenType.Or,
+                    "true" => TokenType.True,
+                    "false" => TokenType.False,
+                    _ => TokenType.Keyword
+                };
+                int posFirstChar = m_CurrentPos - word.Length;
+                results.Add(CreateToken(word, tokenType, posFirstChar));
 
                 m_IsIdle = true;
             }
@@ -270,7 +296,11 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
         private class ExpectTokenException : Exception
         {
-            public ExpectTokenException(TokenType tokenType) : base($"Expect token: '{tokenType}'.") { }
+            public ExpectTokenException(TokenType expectTokenType)
+                : base($"Expect token '{expectTokenType}' but nothing was found.") { }
+
+            public ExpectTokenException(TokenType expectTokenType, Token token)
+                : base($"Expect token '{expectTokenType}' in '{token.SrcText}' (column {token.Column}) but '{token.Type}' was found.") { }
         }
 
         private struct BinaryOperator
@@ -300,8 +330,10 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
         private class Parser
         {
-            // keyword
-            //   : /[_a-zA-Z][_a-zA-Z0-9]*/
+            // condition
+            //   : keyword_token
+            //   | 'true'
+            //   | 'false'
             //   ;
 
             // parentheses_expr
@@ -309,23 +341,36 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
             //   ;
 
             // not_expr
-            //   : 'not' keyword
+            //   : 'not' condition
             //   | 'not' parentheses_expr
+            //   | 'not' not_expr
             //   ;
 
             // expr
-            //   : keyword
+            //   : condition
             //   | parentheses_expr
             //   | not_expr
             //   | expr 'and' expr
             //   | expr 'or' expr
             //   ;
 
+            [ThreadStatic] private static Parser s_Shared;
+
+            public static Parser Shared => s_Shared ??= new Parser();
+
+            private readonly Func<IConditionNode>[] m_NotExprSubParsers;
             private readonly Action<Stack<IConditionNode>>[] m_ExprSubParsers;
             private readonly BinaryOperator[] m_BinaryOperators;
 
             public Parser()
             {
+                m_NotExprSubParsers = new Func<IConditionNode>[]
+                {
+                    ParseNotExpr1,
+                    ParseNotExpr2,
+                    ParseNotExpr3,
+                };
+
                 m_ExprSubParsers = new Action<Stack<IConditionNode>>[]
                 {
                     ParseExpr1,
@@ -343,7 +388,7 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
             private int m_CurrentPos;
             private List<Token> m_Tokens;
 
-            public IConditionNode ToNode(List<Token> tokens)
+            public IConditionNode Parse(List<Token> tokens)
             {
                 if (tokens.Count == 0)
                 {
@@ -355,9 +400,17 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                 m_Tokens = tokens;
 
                 // Parse
-                IConditionNode node = ParseExpr();
-                Assert.IsFalse(m_CurrentPos < m_Tokens.Count);
-                return node;
+                try
+                {
+                    IConditionNode node = ParseExpr();
+                    Assert.IsFalse(m_CurrentPos < m_Tokens.Count);
+                    return node;
+                }
+                catch
+                {
+                    Debug.LogError($"Can not parse expression '{tokens[0].SrcText}'.");
+                    throw;
+                }
             }
 
             private Token ExpectToken(TokenType tokenType, bool eat = true)
@@ -371,7 +424,7 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
                 if ((token.Type & tokenType) == 0)
                 {
-                    throw new ExpectTokenException(tokenType);
+                    throw new ExpectTokenException(tokenType, token);
                 }
 
                 if (eat)
@@ -380,6 +433,18 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                 }
 
                 return token;
+            }
+
+            private IConditionNode ParseCondition()
+            {
+                Token token = ExpectToken(TokenType.Keyword | TokenType.True | TokenType.False);
+                return token.Type switch
+                {
+                    TokenType.Keyword => new KeywordNode(token.Raw),
+                    TokenType.True => new TrueNode(),
+                    TokenType.False => new FalseNode(),
+                    _ => null // Unreachable
+                };
             }
 
             private IConditionNode ParseParenthesesExpr()
@@ -392,18 +457,45 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
             private IConditionNode ParseNotExpr()
             {
-                ExpectToken(TokenType.Not);
+                Exception lastException = null;
 
-                try
+                foreach (Func<IConditionNode> subParser in m_NotExprSubParsers)
                 {
-                    Token token = ExpectToken(TokenType.Keyword);
-                    return new Op_NotNode(new KeywordNode(token.Raw));
+                    int currentPos = m_CurrentPos;
+
+                    try
+                    {
+                        return subParser();
+                    }
+                    catch (ExpectTokenException e)
+                    {
+                        m_CurrentPos = currentPos;
+                        lastException = e;
+                    }
                 }
-                catch (ExpectTokenException)
-                {
-                    IConditionNode node = ParseParenthesesExpr();
-                    return new Op_NotNode(node);
-                }
+
+                throw lastException ?? new Exception("Unknown error. (This is likely a bug of the parser)");
+            }
+
+            private IConditionNode ParseNotExpr1()
+            {
+                ExpectToken(TokenType.Not);
+                IConditionNode node = ParseCondition();
+                return new Op_NotNode(node);
+            }
+
+            private IConditionNode ParseNotExpr2()
+            {
+                ExpectToken(TokenType.Not);
+                IConditionNode node = ParseParenthesesExpr();
+                return new Op_NotNode(node);
+            }
+
+            private IConditionNode ParseNotExpr3()
+            {
+                ExpectToken(TokenType.Not);
+                IConditionNode node = ParseNotExpr();
+                return new Op_NotNode(node);
             }
 
             private IConditionNode ParseExpr(
@@ -437,13 +529,13 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                     }
                 }
 
-                throw lastException ?? new Exception("Can not parse expression.");
+                throw lastException ?? new Exception("Unknown error. (This is likely a bug of the parser)");
             }
 
             private void ParseExpr1(Stack<IConditionNode> nodeStack)
             {
-                Token token = ExpectToken(TokenType.Keyword);
-                nodeStack.Push(new KeywordNode(token.Raw));
+                IConditionNode node = ParseCondition();
+                nodeStack.Push(node);
             }
 
             private void ParseExpr2(Stack<IConditionNode> nodeStack)
@@ -471,6 +563,7 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
 
                         opStack.Push(binaryOp);
                         nodeStack.Push(ParseExpr(nodeStack, opStack));
+                        break;
                     }
                     catch (ExpectTokenException)
                     {
