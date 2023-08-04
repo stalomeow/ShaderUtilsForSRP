@@ -572,11 +572,11 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
                 }
             }
 
-            private static void ReduceOperators(Stack<IConditionNode> nodeStack, Stack<BinaryOperator> opStack, BinaryOperator nextOP)
+            private static void ReduceOperators(Stack<IConditionNode> nodeStack, Stack<BinaryOperator> opStack, BinaryOperator nextOp)
             {
                 while (opStack.TryPeek(out BinaryOperator lastOp))
                 {
-                    if (lastOp.Precedence <= nextOP.Precedence)
+                    if (lastOp.Precedence <= nextOp.Precedence)
                     {
                         break;
                     }
