@@ -1,12 +1,14 @@
 # Shader Utils for SRP v2
 
-Utilities for **SRP** shaders.
+[![openupm](https://img.shields.io/npm/v/com.stalomeow.srp-shader-utils?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.cn/packages/com.stalomeow.srp-shader-utils/)
 
-Settings is in `Preferences/Shader Utils for SRP`.
+Utilities for **SRP** shaders.
 
 ## HLSL Extensions
 
 Create hlsl file using menu item `Assets/Create/Shader/HLSL Shader Include`.
+
+Settings can be found in `Preferences/Shader Utils for SRP`.
 
 ## Advanced Shader GUI
 
