@@ -2,6 +2,8 @@
 
 Utilities for **SRP** shaders.
 
+Settings is in `Preferences/Shader Utils for SRP`.
+
 ## HLSL Extensions
 
 Create hlsl file using menu item `Assets/Create/Shader/HLSL Shader Include`.
