@@ -45,7 +45,7 @@ namespace Stalo.ShaderUtils.Editor
         [MenuItem("Assets/Create/Shader/HLSL Shader Include")]
         private static void Create()
         {
-            Create(GetNewFilePath("NewHLSLShaderInclude"));
+            Create(EditorFileUtility.GetNewFilePathBySelection("NewHLSLShaderInclude"));
         }
 
         public static void Create(string pathName)
@@ -56,20 +56,6 @@ namespace Stalo.ShaderUtils.Editor
                 pathName,
                 AssetPreview.GetMiniTypeThumbnail(typeof(ShaderInclude)),
                 null);
-        }
-
-        private static string GetNewFilePath(string fileName)
-        {
-            string folder = "Assets";
-            Object[] assets = Selection.GetFiltered<Object>(SelectionMode.Assets);
-
-            if (assets.Length > 0)
-            {
-                string assetPath = AssetDatabase.GetAssetPath(assets[0]);
-                folder = AssetDatabase.IsValidFolder(assetPath) ? assetPath : Path.GetDirectoryName(assetPath);
-            }
-
-            return folder + "/" + fileName;
         }
     }
 }

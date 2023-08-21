@@ -5,12 +5,12 @@ using UnityEditor;
 namespace Stalo.ShaderUtils.Editor.Wrappers
 {
     [PublicAPI]
-    internal class PostHelpBoxWrapper : MaterialPropertyWrapper
+    internal class HelpBoxWrapper : MaterialPropertyWrapper
     {
         private readonly MessageType m_MsgType;
         private readonly string m_Message;
 
-        public PostHelpBoxWrapper(string rawArgs) : base(rawArgs)
+        public HelpBoxWrapper(string rawArgs) : base(rawArgs)
         {
             string[] args = rawArgs.Split(',', StringSplitOptions.RemoveEmptyEntries);
 
@@ -23,7 +23,7 @@ namespace Stalo.ShaderUtils.Editor.Wrappers
             m_Message = string.Join(", ", args[1..]);
         }
 
-        public override void OnDidDrawProperty(MaterialProperty prop, string label, MaterialEditor editor)
+        public override void OnWillDrawProperty(MaterialProperty prop, string label, MaterialEditor editor)
         {
             EditorGUILayout.HelpBox(m_Message, m_MsgType);
         }

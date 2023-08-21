@@ -4,11 +4,17 @@
 
 Utilities for **SRP** shaders.
 
-## HLSL Extensions
+## File Extensions
 
-Create hlsl file using menu item `Assets/Create/Shader/HLSL Shader Include`.
+Create HLSL and SRP Shader files easily using menu item.
+
+![menu item](Screenshots~/menu_item.png)
+
+## Preference Settings
 
 Settings can be found in `Preferences/Shader Utils for SRP`.
+
+![pref settings](Screenshots~/pref_settings.png)
 
 ## Advanced Shader GUI
 
@@ -18,15 +24,17 @@ Use `StaloSRPShaderGUI` as CustomEditor.
 CustomEditor "StaloSRPShaderGUI"
 ```
 
+![shader gui](Screenshots~/shader_gui.png)
+
 ### Advanced Shader Property Attributes
 
-- `HeaderFoldout(label, [...tooltip])`
+- `HeaderFoldout(label[, ...tooltips])`
 
     Begin an animated foldout header.
 
-- `Indent([count=1])`
+- `Indent([count])`
 
-    Add indents before the property.
+    Add indents before the property. The default count is 1.
 
 - `HelpBox(None|Info|Warning|Error, ...messages)`
 

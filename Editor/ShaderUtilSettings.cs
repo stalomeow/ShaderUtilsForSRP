@@ -35,6 +35,12 @@ namespace Stalo.ShaderUtils.Editor
             set => SetValue((int)value);
         }
 
+        public static string ShaderNamePrefix
+        {
+            get => GetValue("Unlit/");
+            set => SetValue(value);
+        }
+
         public static string GetLineEnding() => LineEndingType switch
         {
             EOLType.LF => "\n",
@@ -131,9 +137,10 @@ namespace Stalo.ShaderUtils.Editor
 
                     try
                     {
-                        EditorGUILayout.LabelField("HLSL Settings", EditorStyles.boldLabel);
+                        EditorGUILayout.LabelField("Create File Settings", EditorStyles.boldLabel);
                         LineEndingType = (EOLType)EditorGUILayout.EnumPopup("Line Ending", LineEndingType);
                         AddUTF8BOM = EditorGUILayout.Toggle("Add BOM (UTF-8)", AddUTF8BOM);
+                        ShaderNamePrefix = EditorGUILayout.DelayedTextField("Shader Name Prefix", ShaderNamePrefix);
                     }
                     finally
                     {
